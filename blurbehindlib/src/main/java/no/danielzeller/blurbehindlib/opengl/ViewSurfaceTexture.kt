@@ -32,7 +32,11 @@ class ViewSurfaceTexture {
     }
 
     fun updateTexture() {
-        surfaceTexture?.updateTexImage()
+        try {
+            surfaceTexture?.updateTexImage()
+        } catch (e: IllegalStateException) {
+            e.printStackTrace()
+        }
     }
 
     fun releaseSurface() {
@@ -43,7 +47,6 @@ class ViewSurfaceTexture {
     }
 
     fun beginDraw(): Canvas? {
-
         if (surface != null) {
             return surface?.lockHardwareCanvas()
         }
