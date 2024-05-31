@@ -9,21 +9,18 @@ import android.util.AttributeSet
 import android.view.Choreographer
 import android.view.TextureView
 import android.view.View
+import android.view.ViewGroup
 import android.view.ViewTreeObserver
 import android.widget.FrameLayout
 import no.danielzeller.blurbehindlib.renderers.CommonRenderer
 import no.danielzeller.blurbehindlib.renderers.GLSurfaceViewRenderer
 import no.danielzeller.blurbehindlib.renderers.TextureViewRenderer
-import android.view.ViewGroup
-import kotlin.IllegalStateException
-
 
 enum class UpdateMode {
     CONTINUOUSLY, ON_SCROLL, MANUALLY
 }
 
 class BlurBehindLayout : FrameLayout {
-
 
     /**
      *  The View behind the BlurBehindLayout, that is to be Blurred.
@@ -33,7 +30,6 @@ class BlurBehindLayout : FrameLayout {
             checkParent(value)
             field = value
         }
-
 
     /**
      * Set the update mode. When updateMode is
@@ -62,7 +58,6 @@ class BlurBehindLayout : FrameLayout {
      */
     var blurRadius = 40f
         set(value) {
-
             commonRenderer?.blurRadius = value
             field = value
         }
@@ -91,15 +86,17 @@ class BlurBehindLayout : FrameLayout {
     private var paddingVertical = 0f
     private val onScrollChangesListener = ViewTreeObserver.OnScrollChangedListener { updateForMilliSeconds(200) }
 
-    constructor(context: Context, useTextureView: Boolean, blurTextureScale: Float, paddingVertical: Float) : super(context) {
+    constructor(
+        context: Context,
+        useTextureView: Boolean = true,
+        useChildAlphaAsMask: Boolean = true,
+        blurTextureScale: Float = 0.4f,
+        paddingVertical: Float = 0f,
+    ) : super(context) {
         this.blurTextureScale = blurTextureScale
         this.useTextureView = useTextureView
-        this.paddingVertical = paddingVertical
-        initView(context)
-    }
-
-    constructor(context: Context, useChildAlphaAsMask: Boolean) : super(context) {
         this.useChildAlphaAsMask = useChildAlphaAsMask
+        this.paddingVertical = paddingVertical
         initView(context)
     }
 
@@ -107,7 +104,6 @@ class BlurBehindLayout : FrameLayout {
         loadAttributesFromXML(attributeSet)
         initView(context)
     }
-
 
     /**
      *  This will udate the View for the given time in milliseconds. Useful for when updateMode
@@ -247,21 +243,21 @@ class BlurBehindLayout : FrameLayout {
     }
 
     private fun renderBehindViewToTexture() {
-        val commonRenderer = commonRenderer!!
+        val commonRenderer = commonRenderer
+        val glCanvas = commonRenderer?.behindViewSurfaceTexture?.beginDraw()
+        val viewBehind = viewBehind
+        if (commonRenderer == null || glCanvas == null || viewBehind == null) return
 
-        val glCanvas = commonRenderer.behindViewSurfaceTexture.beginDraw()
-
-        glCanvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-        viewBehind?.getLocationInWindow(behindViewPosition)
+        glCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+        viewBehind.getLocationInWindow(behindViewPosition)
         getLocationInWindow(thisViewPosition)
 
-        glCanvas?.scale(commonRenderer.scale, commonRenderer.scale)
-        glCanvas?.translate(0f, paddingVertical * 0.5f)
-        val behindMatrix = viewBehind?.matrix
+        glCanvas.scale(commonRenderer.scale, commonRenderer.scale)
+        glCanvas.translate(0f, paddingVertical * 0.5f)
+        val behindMatrix = viewBehind.matrix
         behindMatrix?.postTranslate(behindViewPosition[0] - thisViewPosition[0].toFloat() - paddingLeft, behindViewPosition[1] - thisViewPosition[1].toFloat() - paddingTop)
-        glCanvas?.concat(behindMatrix)
-
-        viewBehind?.draw(glCanvas)
+        glCanvas.concat(behindMatrix)
+        viewBehind.draw(glCanvas)
 
         commonRenderer.behindViewSurfaceTexture.endDraw(glCanvas)
     }
@@ -279,12 +275,12 @@ class BlurBehindLayout : FrameLayout {
                     childView.visibility = INVISIBLE
                 }
                 val commonRenderer = commonRenderer!!
-                val glCanvas = commonRenderer.childViewSurfaceTexture.beginDraw()
+                val glCanvas = commonRenderer.childViewSurfaceTexture.beginDraw() ?: return
 
-                glCanvas?.scale(1f, height.toFloat() / (height.toFloat() + paddingVertical))
-                glCanvas?.translate(childView.left.toFloat(), childView.top + paddingVertical * 0.5f)
-                glCanvas?.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
-                glCanvas?.concat(childView.matrix)
+                glCanvas.scale(1f, height.toFloat() / (height.toFloat() + paddingVertical))
+                glCanvas.translate(childView.left.toFloat(), childView.top + paddingVertical * 0.5f)
+                glCanvas.drawColor(Color.TRANSPARENT, PorterDuff.Mode.CLEAR)
+                glCanvas.concat(childView.matrix)
                 childView.draw(glCanvas)
 
                 commonRenderer.childViewSurfaceTexture.endDraw(glCanvas)
@@ -293,7 +289,7 @@ class BlurBehindLayout : FrameLayout {
     }
 
     private fun convertIntToEnum(id: Int): UpdateMode {
-        for (f in UpdateMode.values()) {
+        for (f in UpdateMode.entries) {
             if (f.ordinal == id) return f
         }
         return UpdateMode.CONTINUOUSLY
