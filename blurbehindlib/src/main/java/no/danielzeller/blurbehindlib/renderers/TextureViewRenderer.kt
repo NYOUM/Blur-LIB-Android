@@ -17,8 +17,10 @@ import javax.microedition.khronos.egl.EGLSurface
 class TextureViewRenderer(val context: Context) : TextureView.SurfaceTextureListener {
 
     private lateinit var textureViewRenderThread: TextureViewRenderThread
-    override fun onSurfaceTextureUpdated(surface: SurfaceTexture?) {}
-    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture?, width: Int, height: Int) {}
+
+    override fun onSurfaceTextureUpdated(surface: SurfaceTexture) {}
+
+    override fun onSurfaceTextureSizeChanged(surface: SurfaceTexture, width: Int, height: Int) {}
 
     override fun onSurfaceTextureDestroyed(surface: SurfaceTexture): Boolean {
         textureViewRenderThread.isStopped = true
@@ -53,7 +55,6 @@ class TextureViewRenderer(val context: Context) : TextureView.SurfaceTextureList
             val eglConfig = chooseEglConfig(egl!!, eglDisplay!!)
             eglContext = egl!!.eglCreateContext(eglDisplay, eglConfig, EGL_NO_CONTEXT, intArrayOf(EGL14.EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE))
             eglSurface = egl!!.eglCreateWindowSurface(eglDisplay, eglConfig, surface, null)
-
         }
 
         override fun run() {
